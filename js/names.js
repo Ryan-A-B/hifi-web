@@ -189,6 +189,12 @@ PlaceName.prototype.render = function () {
     box[2] -= this.margin[0];
     box[3] -= this.margin[1];
 
+    //Check if PlaceName is outside of canvas
+    //Don't want to display if PlaceName is cut off
+    if (box[0] < 0 || box[1] < 0 || box[2] > this.canvas.width || box[3] > this.canvas.height) {
+        return;
+    }
+
     //Find transparency based on text height
     var alpha = this.textHeight / MAX_TEXT_HEIGHT;
 
