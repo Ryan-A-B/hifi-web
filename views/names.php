@@ -1,4 +1,4 @@
-<canvas id='placeNameCloud' width='800' height='450'></canvas>
+<canvas id='placeNameCloud' width='800' height='400'></canvas>
 
 <div id='placeNameDiv'>
     <img src='img/names.png' alt="Image describing Place Names">
