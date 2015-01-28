@@ -7,8 +7,8 @@ window.onload = function () {
 
 // Uses ajax to retrieve new Place Names
 function displayNewPlaceNames () {
-    var url = 'https://metaverse.highfidelity.io/api/v1/new_place_names';
-    //var url = 'new_place_names.php';
+    //var url = 'https://metaverse.highfidelity.io/api/v1/new_place_names';
+    var url = 'new_place_names.php';
 
     $.getJSON(url, function (data) {
             var names = String(data['data']['new_place_names']).split(',');
