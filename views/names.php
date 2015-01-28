@@ -1,6 +1,6 @@
 <canvas id='placeNameCloud' width='800' height='400'></canvas>
 
-<div id='placeNameDiv'>
+<div role='main' id='main'>
     <img src='img/names.png' alt="Image describing Place Names">
 
     <h1>Place Names are the .com's & .net's of the Metaverse</h1>
