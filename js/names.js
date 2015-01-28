@@ -1,8 +1,20 @@
 var MAX_TEXT_HEIGHT = 30;
 
 window.onload = function () {
-    renderCloud();
-    setInterval(renderCloud, 10000);
+    displayNewPlaceNames();
+    setInterval(displayNewPlaceNames, 10000);
+}
+
+//Uses ajax to retrieve new Place Names
+function displayNewPlaceNames () {
+//    var url = 'https://metaverse.highfidelity.io/api/v1/new_place_names';
+    var url = 'new_place_names.php';
+
+    $.getJSON(url, function (data) {
+            var names = String(data['data']['new_place_names']).split(',');
+            names.shuffle();
+            renderCloud(names);
+    });
 }
 
 //Compares two arrays
@@ -23,6 +35,22 @@ Array.prototype.equals = function (array) {
         }
     }
     return true;
+}
+
+//Randomly resorts array
+Array.prototype.shuffle = function () {
+    var j, tmp;
+    for (var i = 0; i < this.length; i++) {
+        //Random Integer between 0 and array length - 1
+        j = Math.round(Math.random() * (this.length - 1));
+
+        //If i and j are equal no point swaping
+        if (i != j) {
+            tmp = this[j];
+            this[j] = this[i];
+            this[i] = tmp;
+        }
+    }
 }
 
 //PlaceName "class" constructor
@@ -219,23 +247,6 @@ PlaceName.prototype.render = function () {
     this.context.stroke();
 }
 
-function generateRandomStrings () {
-    var strs = new Array();
-
-    var chars = "qwertyuiopasdfghjklzxcvbnm";
-
-    for (var i = 0; i < 30; i++) {
-        var len = Math.floor(Math.random() * 10 + 5);
-        var str = '';
-        for (var j = 0; j < len; j++) {
-            str += chars.charAt(Math.random() * 26);
-        }
-        strs.push(str);
-    }
-
-    return strs;
-}
-
 //Generate a random angle
 //Keeping away from 0, 90, 180 and 270 as these can cause the cloud
 //to be too tall or too wide
@@ -262,10 +273,7 @@ function getRandomAngle () {
 }
 
 //Creates and draws Place Name Cloud
-function renderCloud () {
-    //Retrieve Place Names
-    var names = generateRandomStrings();
-
+function renderCloud (names) {
     //Get Canvas and generate 2d context
     var canvas = document.getElementById('placeNameCloud');
     var context = canvas.getContext('2d');
