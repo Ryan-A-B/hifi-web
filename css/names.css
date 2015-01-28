@@ -6,33 +6,36 @@ canvas {
     -webkit-transform:translateX(-50%);
 }
 
-#placeNameDiv {
+#main {
     display:block;
     width:100%;
     
     margin-bottom:3%;
 }
 
-#placeNameDiv img, #placeNameDiv h1, #placeNameDiv p {
+#main img,
+#main h1,
+#main p {
     width:80%;
     margin:0% 10%;
     padding:0%;
 }
 
-#placeNameDiv img {
+#main img {
     margin-bottom:2%;
 }
 
-#placeNameDiv h1, #placeNameDiv p {
+#main h1,
+#main p {
     text-align:center;
     font-family:Helvetica;
 }
 
-#placeNameDiv h1 {
+#main h1 {
     color:#6094c5;
 }
 
-#placeNameDiv p {
+#main p {
     margin-top:2%;
     margin-bottom:2%;
 
@@ -40,7 +43,7 @@ canvas {
     font-size:18px;
 }
 
-#placeNameDiv a {
+#main a {
     display:inline-block;
 
     position:relative;
@@ -61,7 +64,7 @@ canvas {
     font-size:20px;
 }
 
-#placeNameDiv a:hover {
+#main a:hover {
     color:#336786;
     background-color:#ace0ff;
 }

@@ -1,5 +1,5 @@
-//Profanity list from the following source 23/01/2015
-//https://github.com/shutterstock/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/blob/master/en
+// Profanity list from the following source 23/01/2015
+// https://github.com/shutterstock/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/blob/master/en
 var profanity = [
     /2g1c/i, /2 girls 1 cup/i, /acrotomophilia/i, /alabama hot pocket/i, /alaskan pipeline/i, 
     /anal/i, /anilingus/i, /anus/i, /arsehole/i, /ass/i, /asshole/i, /assmunch/i, /auto erotic/i, 
@@ -59,11 +59,10 @@ var profanity = [
     /wrapping men/i, /wrinkled starfish/i, /xx/i, /xxx/i, /yaoi/i, /yellow showers/i, /yiffy/i, 
     /zoophilia/i
 ];
-//Well that was educational...
+// Well that was educational...
 
-//Compares word to list of profanity regular expressions
-//Returns true if profanity found
-//otherwise false
+// Compares word to list of profanity regular expressions
+// Returns true if profanity found otherwise false
 function hasProfanity (word) {
     for (var i = 0; i < profanity.length; i++) {
         if (word.search(profanity[i]) != -1) {
