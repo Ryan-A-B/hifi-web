@@ -1,4 +1,7 @@
 var MAX_TEXT_HEIGHT = 30;
+var MARGIN = 3;
+var PADDING = 8;
+var NUM_PLACE_NAMES = 25;
 
 window.onload = function () {
     displayNewPlaceNames();
@@ -7,12 +10,14 @@ window.onload = function () {
 
 // Uses ajax to retrieve new Place Names
 function displayNewPlaceNames () {
-    //var url = 'https://metaverse.highfidelity.io/api/v1/new_place_names';
-    var url = 'new_place_names.php';
+    var url = 'https://metaverse.highfidelity.io/api/v1/new_place_names';
 
     $.getJSON(url, function (data) {
             var names = String(data['data']['new_place_names']).split(',');
             names.shuffle();
+            if (names.length > NUM_PLACE_NAMES) {
+                names.slice(0, NUM_PLACE_NAMES);
+            }
             renderCloud(names);
     });
 }
@@ -54,7 +59,7 @@ Array.prototype.shuffle = function () {
 }
 
 // PlaceName "class" constructor
-function PlaceName (canvas, context, name, center, textHeight, margin, padding) {
+function PlaceName (canvas, context, name, center, textHeight) {
     // Initialise class variables
     this.canvas = canvas;
     this.context = context;
@@ -66,13 +71,10 @@ function PlaceName (canvas, context, name, center, textHeight, margin, padding) 
     // This seems to take a bit of processing time
     // Thus don't do it if it's not necessary
     if (this.context.font.split(' ')[0] != textHeight + 'px') {
-        this.context.font = textHeight + 'px Helvetica';
+        this.context.font = textHeight + 'px sans-serif';
     }
 
     this.textWidth = this.context.measureText(this.name).width;
-
-    this.margin = [this.canvas.width * margin, this.canvas.height * margin];
-    this.padding = [this.canvas.width * padding, this.canvas.height * padding];
 }
 
 // Returns the angle in radians from the center of PlaceName to center of canvas
@@ -87,10 +89,10 @@ PlaceName.prototype.getAngleToCenter = function () {
 // as array [topLeftX, topLeftY, BottomRightX, BottomRightY]
 PlaceName.prototype.getBoundingBox = function () {
     var box = [
-        Math.floor(this.center[0] - (this.textWidth / 2 + this.padding[0] + this.margin[0])),
-        Math.floor(this.center[1] - (this.textHeight / 2 + this.padding[1] + this.margin[1])),
-        Math.ceil(this.center[0] + (this.textWidth / 2 + this.padding[0] + this.margin[0])),
-        Math.ceil(this.center[1] + (this.textHeight / 2 + this.padding[1] + this.margin[1]))
+        Math.floor(this.center[0] - (this.textWidth / 2 + PADDING + MARGIN)),
+        Math.floor(this.center[1] - (this.textHeight / 2 + PADDING + MARGIN)),
+        Math.ceil(this.center[0] + (this.textWidth / 2 + PADDING + MARGIN)),
+        Math.ceil(this.center[1] + (this.textHeight / 2 + PADDING + MARGIN))
     ];
 
     return box;
@@ -103,7 +105,7 @@ PlaceName.prototype.hasCollision = function (placeName) {
     // Find distance in the y between center of this and center of supplied placename
     var yDist = Math.abs(this.center[1] - placeName.center[1]);
     // Subtract the minimum distance in the y to disallow collision
-    yDist -= (this.textHeight + placeName.textHeight) / 2 + (this.padding[1] + this.margin[1]) * 2;
+    yDist -= (this.textHeight + placeName.textHeight) / 2 + (PADDING + MARGIN) * 2;
 
     // If positive or zero then no collision
     // If negative need to check x
@@ -113,7 +115,7 @@ PlaceName.prototype.hasCollision = function (placeName) {
 
     // Repeat for x
     var xDist = Math.abs(this.center[0] - placeName.center[0]);
-    xDist -= (this.textWidth + placeName.textWidth) / 2 + (this.padding[0] + this.margin[0]) * 2;
+    xDist -= (this.textWidth + placeName.textWidth) / 2 + (PADDING + MARGIN) * 2;
 
     // If negative collision detected
     if (xDist < 0) {
@@ -205,17 +207,17 @@ PlaceName.prototype.erase = function () {
 // Draws PlaceName on canvas
 PlaceName.prototype.render = function () {
     // Radius of corners
-    var radius = 5;
+    var radius = 3;
 
     var box = this.getBoundingBox();
     if (!box) {
         return;
     }
     // Remove margin from bounding box, only want padding
-    box[0] += this.margin[0];
-    box[1] += this.margin[1];
-    box[2] -= this.margin[0];
-    box[3] -= this.margin[1];
+    box[0] += MARGIN;
+    box[1] += MARGIN;
+    box[2] -= MARGIN;
+    box[3] -= MARGIN;
 
     // Check if PlaceName is outside of canvas
     // Don't want to display if PlaceName is cut off
@@ -247,31 +249,6 @@ PlaceName.prototype.render = function () {
     this.context.stroke();
 }
 
-// Generate a random angle
-// Keeping away from 0, 90, 180 and 270 as these can cause the cloud
-// to be too tall or too wide
-function getRandomAngle () {
-    var angle;
-
-    do {
-        // 0 <= angle < 360
-        angle = Math.random() * Math.PI * 2;
-    } while (
-        // angle < 10
-        angle < Math.PI/18 ||
-        // 60 < angle < 120
-        angle > Math.PI/3 && angle < 2*Math.PI/3 ||
-        // 170 < angle < 190
-        angle > 17*Math.PI/18 && angle < 19*Math.PI/18 ||
-        // 240 < angle < 300
-        angle > 4*Math.PI/3 && angle < 5*Math.PI/3 ||
-        // angle > 370
-        angle > 35*Math.PI/18
-    );
-
-    return angle;
-}
-
 // Creates and draws Place Name Cloud
 function renderCloud (names) {
     // Get Canvas and generate 2d context
@@ -285,14 +262,18 @@ function renderCloud (names) {
     context.textAlign = 'center';
     context.textBaseline = 'middle';
 
-    // Set margin and padding percentages (percentage of canvas width or height)
-    var margin = 0.005;
-    var padding = 0.01;
-
     // Want to place first PlaceName in center
     // Can't use 'i' incase first Place Name has profanity
     var firstPlaceName = true;
     var placeNames = new Array();
+
+    //Array of angles for the Place Name starting points
+    var j = 0;
+    var angles = [1/8, 7/8, 9/8, 15/8];
+    for (var i = 0; i < angles.length; i++) {
+        angles[i] *= Math.PI;
+    }
+
     for (var i = 0; i < names.length; i++) {
         // Check for profanity, if found skip
         if (hasProfanity(names[i])) {
@@ -303,16 +284,16 @@ function renderCloud (names) {
             placeNames.push(new PlaceName(
                 canvas, context, names[i], 
                 [Math.round(canvas.width/2), Math.round(canvas.height/2)], 
-                MAX_TEXT_HEIGHT, margin, padding
+                MAX_TEXT_HEIGHT
             ));
             firstPlaceName = false;
         } else {
             // Set text height in stages based on random number
-            var tmp = Math.random();
+            var tmp = i / names.length;
             var textHeight;
-            if (tmp > 0.7) {
-                textHeight = Math.round(MAX_TEXT_HEIGHT * 0.85);
-            } else if (tmp > 0.3) {
+            if (tmp < 0.2) {
+                textHeight = Math.round(MAX_TEXT_HEIGHT * 0.8);
+            } else if (tmp < 0.5) {
                 textHeight = Math.round(MAX_TEXT_HEIGHT * 0.6);
             } else {
                 textHeight = Math.round(MAX_TEXT_HEIGHT * 0.4);
@@ -322,11 +303,15 @@ function renderCloud (names) {
             placeNames.push(new PlaceName(
                 canvas, context, names[i], 
                 [
-                    Math.round(canvas.width/2 + 800*Math.cos(getRandomAngle())), 
-                    Math.round(canvas.height/2 + 800*Math.sin(getRandomAngle()))
+                    Math.round(canvas.width/2 + 800*Math.cos(angles[j])), 
+                    Math.round(canvas.height/2 + 800*Math.sin(angles[j]))
                 ], 
-                textHeight, margin, padding
+                textHeight
             ));
+            j++;
+            while (j >= angles.length) {
+                j -= angles.length;
+            }
 
             // Move PlaceName towards center
             placeNames[placeNames.length - 1].gravitate(placeNames);
