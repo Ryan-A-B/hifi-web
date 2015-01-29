@@ -1,6 +1,6 @@
 var MAX_TEXT_HEIGHT = 30;
-var MARGIN = 3;
-var PADDING = 8;
+var MARGIN = [3, 3];
+var PADDING = [16, 8];//[x, y]
 var NUM_PLACE_NAMES = 25;
 
 window.onload = function () {
@@ -71,7 +71,7 @@ function PlaceName (canvas, context, name, center, textHeight) {
     // This seems to take a bit of processing time
     // Thus don't do it if it's not necessary
     if (this.context.font.split(' ')[0] != textHeight + 'px') {
-        this.context.font = textHeight + 'px sans-serif';
+        this.context.font = textHeight + 'px proxima-nova, sans-serif';
     }
 
     this.textWidth = this.context.measureText(this.name).width;
@@ -89,10 +89,10 @@ PlaceName.prototype.getAngleToCenter = function () {
 // as array [topLeftX, topLeftY, BottomRightX, BottomRightY]
 PlaceName.prototype.getBoundingBox = function () {
     var box = [
-        Math.floor(this.center[0] - (this.textWidth / 2 + PADDING + MARGIN)),
-        Math.floor(this.center[1] - (this.textHeight / 2 + PADDING + MARGIN)),
-        Math.ceil(this.center[0] + (this.textWidth / 2 + PADDING + MARGIN)),
-        Math.ceil(this.center[1] + (this.textHeight / 2 + PADDING + MARGIN))
+        Math.floor(this.center[0] - (this.textWidth / 2 + PADDING[0] + MARGIN[0])),
+        Math.floor(this.center[1] - (this.textHeight / 2 + PADDING[1] + MARGIN[1])),
+        Math.ceil(this.center[0] + (this.textWidth / 2 + PADDING[0] + MARGIN[0])),
+        Math.ceil(this.center[1] + (this.textHeight / 2 + PADDING[1] + MARGIN[1]))
     ];
 
     return box;
@@ -105,7 +105,7 @@ PlaceName.prototype.hasCollision = function (placeName) {
     // Find distance in the y between center of this and center of supplied placename
     var yDist = Math.abs(this.center[1] - placeName.center[1]);
     // Subtract the minimum distance in the y to disallow collision
-    yDist -= (this.textHeight + placeName.textHeight) / 2 + (PADDING + MARGIN) * 2;
+    yDist -= (this.textHeight + placeName.textHeight) / 2 + (PADDING[1] + MARGIN[1]) * 2;
 
     // If positive or zero then no collision
     // If negative need to check x
@@ -115,7 +115,7 @@ PlaceName.prototype.hasCollision = function (placeName) {
 
     // Repeat for x
     var xDist = Math.abs(this.center[0] - placeName.center[0]);
-    xDist -= (this.textWidth + placeName.textWidth) / 2 + (PADDING + MARGIN) * 2;
+    xDist -= (this.textWidth + placeName.textWidth) / 2 + (PADDING[0] + MARGIN[0]) * 2;
 
     // If negative collision detected
     if (xDist < 0) {
@@ -214,10 +214,10 @@ PlaceName.prototype.render = function () {
         return;
     }
     // Remove margin from bounding box, only want padding
-    box[0] += MARGIN;
-    box[1] += MARGIN;
-    box[2] -= MARGIN;
-    box[3] -= MARGIN;
+    box[0] += MARGIN[0];
+    box[1] += MARGIN[1];
+    box[2] -= MARGIN[0];
+    box[3] -= MARGIN[1];
 
     // Check if PlaceName is outside of canvas
     // Don't want to display if PlaceName is cut off
@@ -269,10 +269,19 @@ function renderCloud (names) {
 
     //Array of angles for the Place Name starting points
     var j = 0;
-    var angles = [1/8, 7/8, 9/8, 15/8];
-    for (var i = 0; i < angles.length; i++) {
-        angles[i] *= Math.PI;
-    }
+
+    //The following angles form the shape of the cloud
+    //Plus Minus 30deg and 22.5deg at 0deg and 180deg
+    var angles = [
+        Math.PI / 6,
+        5 * Math.PI / 6,
+        7 * Math.PI / 6,
+        11 * Math.PI / 6,
+        Math.PI / 9,
+        8 * Math.PI / 9,
+        10 * Math.PI / 9,
+        17 * Math.PI / 9,
+    ];
 
     for (var i = 0; i < names.length; i++) {
         // Check for profanity, if found skip
@@ -293,7 +302,7 @@ function renderCloud (names) {
             var textHeight;
             if (tmp < 0.2) {
                 textHeight = Math.round(MAX_TEXT_HEIGHT * 0.8);
-            } else if (tmp < 0.5) {
+            } else if (tmp < 0.4) {
                 textHeight = Math.round(MAX_TEXT_HEIGHT * 0.6);
             } else {
                 textHeight = Math.round(MAX_TEXT_HEIGHT * 0.4);
