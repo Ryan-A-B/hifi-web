@@ -35,9 +35,6 @@ if (class_exists('View')) {
                 <li>
                     <a href="<?php echo $docs_url; ?>" title="Docs">Docs</a><i></i>
                 </li>
-                <li class="<?php echo ($page == 'names' ? 'selected' : ''); ?>">
-                    <a href="<?php echo $base_path; ?>names" title="Names">Names</a><i></i>
-                </li>
                 <li>
                     <a href="<?php echo $base_path; ?>press" title="Press">Press</a><i></i>
                 </li>
