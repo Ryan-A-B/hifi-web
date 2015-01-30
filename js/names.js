@@ -1,26 +1,71 @@
-var MAX_TEXT_HEIGHT = 30;
-var MARGIN = [3, 3];
-var PADDING = [16, 8];//[x, y]
-var NUM_PLACE_NAMES = 25;
+var names = {
+    options: {
+        unsupported_warning: false
+    },
 
-window.onload = function () {
-    displayNewPlaceNames();
-    setInterval(displayNewPlaceNames, 10000);
-}
+    MAX_TEXT_HEIGHT: 30,
+    MAX_PLACE_NAMES: 25,
+    // TAG_START_DIST needs to be large enough to avoid collision
+    // with other tags
+    TAG_START_DIST: 800,
+    TAG_MARGIN: [3, 3],
+    TAG_PADDING: [16, 8],
+    TAG_COLOUR: '96, 148, 197',
 
-// Uses ajax to retrieve new Place Names
-function displayNewPlaceNames () {
-    var url = 'https://metaverse.highfidelity.io/api/v1/new_place_names';
+    //Set in profanityFilter.js
+    profanity: null,//Array of regular expressions for profanity
+    hasProfanity: null,//Function to test string for profanity
 
-    $.getJSON(url, function (data) {
-            var names = String(data['data']['new_place_names']).split(',');
-            names.shuffle();
-            if (names.length > NUM_PLACE_NAMES) {
-                names.slice(0, NUM_PLACE_NAMES);
-            }
-            renderCloud(names);
-    });
-}
+    tagCloud: null,
+
+    init: function () {
+        tagCloud = new TagCloud(
+            document.getElementById('canvas'),
+            names.TAG_START_DIST,
+            names.TAG_MARGIN,
+            names.TAG_PADDING,
+            names.TAG_COLOUR
+        );
+    
+        names.displayNewPlaceNames();
+        setInterval(names.displayNewPlaceNames, 10000);
+    },
+
+    // Uses ajax to retrieve new Place Names
+    displayNewPlaceNames: function () {
+        var url = 'https://metaverse.highfidelity.io/api/v1/new_place_names';
+
+        $.getJSON(url, function (data) {
+                var placeNames = String(data['data']['new_place_names']).split(',');
+                placeNames.shuffle();
+                if (placeNames.length > names.MAX_PLACE_NAMES) {
+                    placeNames.slice(0, names.MAX_PLACE_NAMES);
+                }
+
+                tagCloud.clear();
+                
+                var tmp, textHeight;
+                for (var i = 0; i < placeNames.length; i++) {
+                    tmp = i / placeNames.length;
+                    if (tmp < 0.2) {
+                        textHeight = Math.round(names.MAX_TEXT_HEIGHT * 0.8);
+                    } else if (tmp < 0.4) {
+                        textHeight = Math.round(names.MAX_TEXT_HEIGHT * 0.6);
+                    } else {
+                        textHeight = Math.round(names.MAX_TEXT_HEIGHT * 0.4);
+                    }
+                
+                    tagCloud.createTag(placeNames[i], textHeight);
+                }
+        });
+    },
+
+    isCompatible: function () {
+        return true;
+    }
+};
+
+/******************** Extending Array ********************/
 
 // Compares two arrays
 // Returns true if equal
@@ -58,54 +103,44 @@ Array.prototype.shuffle = function () {
     }
 }
 
-// PlaceName "class" constructor
-function PlaceName (canvas, context, name, center, textHeight) {
-    // Initialise class variables
-    this.canvas = canvas;
-    this.context = context;
-    this.name = name;
-    this.center = center;
-    this.textHeight = textHeight;
-
-    // To check textWidth the context height needs to be set
-    // This seems to take a bit of processing time
-    // Thus don't do it if it's not necessary
-    if (this.context.font.split(' ')[0] != textHeight + 'px') {
-        this.context.font = textHeight + 'px proxima-nova, sans-serif';
+//Returns the last element of an array
+Array.prototype.last = function () {
+    if (this.length == 0) {
+        return null;
     }
-
-    this.textWidth = this.context.measureText(this.name).width;
+    return this[this.length - 1];
 }
 
-// Returns the angle in radians from the center of PlaceName to center of canvas
-PlaceName.prototype.getAngleToCenter = function () {
-    var x = this.center[0] - this.canvas.width / 2;
-    var y = this.center[1] - this.canvas.height / 2;
+/******************** Tag ********************/
+
+function Tag (tagCloud, text, textHeight, pos) {
+    this.tagCloud = tagCloud;
+    this.text = text;
+    this.textHeight = textHeight;
+    this.pos = pos;
+    
+    if (tagCloud.context.font.split(' ')[0] != textHeight + 'px') {
+        tagCloud.context.font = textHeight + 'px proxima-nova, sans-serif';
+    }
+    this.textWidth = tagCloud.context.measureText(text).width;
+}
+
+// Returns the angle in radians from Tag to pos
+Tag.prototype.getAngleTo = function (pos) {
+    var x = this.pos[0] - pos[0];
+    var y = this.pos[1] - pos[1];
 
     return Math.atan2(y, x);
 }
 
-// Returns coordinates of top left corner and bottom right corner (Canvas origin is top left)
-// as array [topLeftX, topLeftY, BottomRightX, BottomRightY]
-PlaceName.prototype.getBoundingBox = function () {
-    var box = [
-        Math.floor(this.center[0] - (this.textWidth / 2 + PADDING[0] + MARGIN[0])),
-        Math.floor(this.center[1] - (this.textHeight / 2 + PADDING[1] + MARGIN[1])),
-        Math.ceil(this.center[0] + (this.textWidth / 2 + PADDING[0] + MARGIN[0])),
-        Math.ceil(this.center[1] + (this.textHeight / 2 + PADDING[1] + MARGIN[1]))
-    ];
-
-    return box;
-}
-
-// Checks this PlaceName against array of PlaceNames
+// Checks this Tag against another Tag
 // Returns true if collision is detected
 // false otherwise
-PlaceName.prototype.hasCollision = function (placeName) {
+Tag.prototype.hasCollision = function (tag) {
     // Find distance in the y between center of this and center of supplied placename
-    var yDist = Math.abs(this.center[1] - placeName.center[1]);
+    var yDist = Math.abs(this.pos[1] - tag.pos[1]);
     // Subtract the minimum distance in the y to disallow collision
-    yDist -= (this.textHeight + placeName.textHeight) / 2 + (PADDING[1] + MARGIN[1]) * 2;
+    yDist -= (this.textHeight + tag.textHeight) / 2 + (this.tagCloud.tagPadding[1] + this.tagCloud.tagMargin[1]) * 2;
 
     // If positive or zero then no collision
     // If negative need to check x
@@ -114,8 +149,8 @@ PlaceName.prototype.hasCollision = function (placeName) {
     }
 
     // Repeat for x
-    var xDist = Math.abs(this.center[0] - placeName.center[0]);
-    xDist -= (this.textWidth + placeName.textWidth) / 2 + (PADDING[0] + MARGIN[0]) * 2;
+    var xDist = Math.abs(this.pos[0] - tag.pos[0]);
+    xDist -= (this.textWidth + tag.textWidth) / 2 + (this.tagCloud.tagPadding[0] + this.tagCloud.tagMargin[0]) * 2;
 
     // If negative collision detected
     if (xDist < 0) {
@@ -125,60 +160,111 @@ PlaceName.prototype.hasCollision = function (placeName) {
     return false;
 }
 
-// Attempts to move PlaceName dist in axis direction (0=x, 1=y)
-// Fails if the move would cause collision
-PlaceName.prototype.slide = function (placeNames, axis, dist) {
-    // No point wasting processor time if dist is zero
-    if (dist == 0) {
-        return false;
-    }
+// Returns coordinates of top left corner and bottom right corner (Canvas origin is top left)
+// as array [topLeftX, topLeftY, BottomRightX, BottomRightY]
+Tag.prototype.getBoundingBox = function () {
+    var box = [
+        Math.floor(this.pos[0] - (this.textWidth / 2 + this.tagCloud.tagPadding[0])),
+        Math.floor(this.pos[1] - (this.textHeight / 2 + this.tagCloud.tagPadding[1])),
+        Math.ceil(this.pos[0] + (this.textWidth / 2 + this.tagCloud.tagPadding[0])),
+        Math.ceil(this.pos[1] + (this.textHeight / 2 + this.tagCloud.tagPadding[1]))
+    ];
 
-    // Add dist to center's coordinate
-    this.center[axis] += dist;
-    for (var i = 0; i < placeNames.length; i++) {
-        // Don't check for collision with self
-        if (this == placeNames[i]) {
-            continue;
-        }
-
-        // If collision results, revert change and return false
-        if (this.hasCollision(placeNames[i])) {
-            this.center[axis] -= dist;
-            return false;
-        }
-    }
-    // No collision
-    return true;
+    return box;
 }
 
-// Moves PlaceName towards center
-PlaceName.prototype.gravitate = function (placeNames) {
+/******************** TagCloud ********************/
+
+function TagCloud (canvas, tagStartDist, tagMargin, tagPadding, tagColour) {
+    this.canvas = canvas;
+    this.tagStartDist = tagStartDist;
+    this.tagMargin = tagMargin;
+    this.tagPadding = tagPadding;
+    this.tagColour = tagColour;
+
+    this.tags = new Array();
+
+    this.context = canvas.getContext('2d');
+    this.center = [canvas.width/2, canvas.height/2];
+    
+    this.angles = [
+        Math.PI / 6,
+        5 * Math.PI / 6,
+        7 * Math.PI / 6,
+        11 * Math.PI / 6,
+        Math.PI / 9,
+        8 * Math.PI / 9,
+        10 * Math.PI / 9,
+        17 * Math.PI / 9
+    ];
+    
+    this.context.textAlign = 'center';
+    this.context.textBaseline = 'middle';
+}
+
+TagCloud.prototype.clear = function () {
+    //Clear the canvas
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Empth the tags array
+    while (this.tags.length != 0) {
+        this.tags.pop();
+    }
+}
+
+TagCloud.prototype.createTag = function (text, textHeight) {
+    if (names.hasProfanity(text)) {
+        return;
+    }
+
+    var tag;
+    if (this.tags.length == 0) {
+        tag = new Tag(
+            this,
+            text,
+            names.MAX_TEXT_HEIGHT,
+            this.center
+        );
+    } else {
+        var angle = this.angles[this.tags.length % this.angles.length];
+        var pos = this.center.slice();
+        pos[0] += this.tagStartDist * Math.cos(angle);
+        pos[1] += this.tagStartDist * Math.sin(angle);
+        
+        tag = new Tag(this, text, textHeight, pos);
+        this.applyGravity(tag);
+    }
+    this.drawTag(tag);
+    this.tags.push(tag);
+}
+
+TagCloud.prototype.applyGravity = function (tag) {
     var dist = 32;
     var theta, dx, dy;
-    var prevCenters = new Array();
+    var previousPositions = new Array();
     var stillMoving, bouncing = false;
 
-    // Had an issue in which the PlaceName was 
+    // Had an issue in which the Tag was 
     // bouncing between two or three positions
     do {
         // Record of previous positions
-        prevCenters.push(this.center.slice());
+        previousPositions.push(tag.pos.slice());
 
         // Get angle to center
-        theta = this.getAngleToCenter();
+        theta = tag.getAngleTo(this.center);
         // Break into components
         dx = Math.round(-dist*Math.cos(theta));
         dy = Math.round(-dist*Math.sin(theta));
 
-        // Move PlaceName
-        this.slide(placeNames, 1, dy);
-        this.slide(placeNames, 0, dx);
+        // Move tag
+        this.moveTag(tag, 1, dy);
+        this.moveTag(tag, 0, dx);
 
-        // Check if PlaceName actually moved
-        stillMoving = !this.center.equals(prevCenters[prevCenters.length - 1]);
+        // Check if Tag actually moved
+        stillMoving = !tag.pos.equals(previousPositions.last());
         // Check if revisiting old positions (bouncing)
-        for (var i = prevCenters.length - 2; i >= 0; i--) {
-            if (this.center.equals(prevCenters[i])) {
+        for (var i = previousPositions.length - 2; i >= 0; i--) {
+            if (tag.pos.equals(previousPositions[i])) {
                 bouncing = true;
                 break;
             }
@@ -194,47 +280,60 @@ PlaceName.prototype.gravitate = function (placeNames) {
         }
     } while (stillMoving && !bouncing);
 }
-
-// Removes PlaceName from canvas
-PlaceName.prototype.erase = function () {
-    var box = this.getBoundingBox();
-
-    if (box) {
-        this.context.clearRect(box[0], box[1], box[2]-box[0], box[3]-box[1]);
+// Attempts to move Tag dist in axis direction (0=x, 1=y)
+// Fails if the move would cause collision
+TagCloud.prototype.moveTag = function (tag, axis, dist) {
+    // No point wasting processor time if dist is zero
+    if (dist == 0) {
+        return false;
     }
+
+    // Add dist to center's coordinate
+    tag.pos[axis] += dist;
+    
+    // If collision results, revert change and return false
+    if (this.hasCollision(tag)) {
+        tag.pos[axis] -= dist;
+        return false;
+    }
+    return true;
 }
 
-// Draws PlaceName on canvas
-PlaceName.prototype.render = function () {
+TagCloud.prototype.hasCollision = function (tag) {
+    for (var i = 0; i < this.tags.length; i++) {
+        if (tag.hasCollision(this.tags[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Draws Tag on canvas
+TagCloud.prototype.drawTag = function (tag) {
     // Radius of corners
     var radius = 3;
-
-    var box = this.getBoundingBox();
+    
+    var box = tag.getBoundingBox();
     if (!box) {
         return;
     }
-    // Remove margin from bounding box, only want padding
-    box[0] += MARGIN[0];
-    box[1] += MARGIN[1];
-    box[2] -= MARGIN[0];
-    box[3] -= MARGIN[1];
-
-    // Check if PlaceName is outside of canvas
-    // Don't want to display if PlaceName is cut off
+    
+    // Check if Tag is outside of canvas
+    // Don't want to display if Tag is cut off
     if (box[0] < 0 || box[1] < 0 || box[2] > this.canvas.width || box[3] > this.canvas.height) {
         return;
     }
-
+    
     // Find transparency based on text height
-    var alpha = this.textHeight / MAX_TEXT_HEIGHT;
-
+    var alpha = tag.textHeight / names.MAX_TEXT_HEIGHT;
+    
     // Set colour and transparency
-    this.context.fillStyle = "rgba(96, 148, 197, " + alpha + ")";
-    this.context.strokeStyle = "rgba(96, 148, 197, " + alpha + ")";
-
+    this.context.fillStyle = "rgba(" + this.tagColour + "," + alpha + ")";
+    this.context.strokeStyle = this.context.fillStyle;
+    
     // Draw the text
-    this.context.fillText(this.name, this.center[0], this.center[1]);
-
+    this.context.fillText(tag.text, tag.pos[0], tag.pos[1]);
+    
     // Draw the box
     this.context.beginPath();
     this.context.moveTo(box[0] + radius, box[1]);
@@ -247,85 +346,4 @@ PlaceName.prototype.render = function () {
     this.context.lineTo(box[0], box[1] + radius);
     this.context.arcTo(box[0], box[1], box[0] + radius, box[1], radius);
     this.context.stroke();
-}
-
-// Creates and draws Place Name Cloud
-function renderCloud (names) {
-    // Get Canvas and generate 2d context
-    var canvas = document.getElementById('placeNameCloud');
-    var context = canvas.getContext('2d');
-
-    // Clear the canvas
-    context.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Set center of PlaceName to be center of text
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-
-    // Want to place first PlaceName in center
-    // Can't use 'i' incase first Place Name has profanity
-    var firstPlaceName = true;
-    var placeNames = new Array();
-
-    //Array of angles for the Place Name starting points
-    var j = 0;
-
-    //The following angles form the shape of the cloud
-    //Plus Minus 30deg and 22.5deg at 0deg and 180deg
-    var angles = [
-        Math.PI / 6,
-        5 * Math.PI / 6,
-        7 * Math.PI / 6,
-        11 * Math.PI / 6,
-        Math.PI / 9,
-        8 * Math.PI / 9,
-        10 * Math.PI / 9,
-        17 * Math.PI / 9,
-    ];
-
-    for (var i = 0; i < names.length; i++) {
-        // Check for profanity, if found skip
-        if (hasProfanity(names[i])) {
-            continue;
-        }
-        if (firstPlaceName) {
-            // First PlaceName goes at center of canvas with largest size
-            placeNames.push(new PlaceName(
-                canvas, context, names[i], 
-                [Math.round(canvas.width/2), Math.round(canvas.height/2)], 
-                MAX_TEXT_HEIGHT
-            ));
-            firstPlaceName = false;
-        } else {
-            // Set text height in stages based on random number
-            var tmp = i / names.length;
-            var textHeight;
-            if (tmp < 0.2) {
-                textHeight = Math.round(MAX_TEXT_HEIGHT * 0.8);
-            } else if (tmp < 0.4) {
-                textHeight = Math.round(MAX_TEXT_HEIGHT * 0.6);
-            } else {
-                textHeight = Math.round(MAX_TEXT_HEIGHT * 0.4);
-            }
-
-            // Position PlaceName 800px from center at random angle
-            placeNames.push(new PlaceName(
-                canvas, context, names[i], 
-                [
-                    Math.round(canvas.width/2 + 800*Math.cos(angles[j])), 
-                    Math.round(canvas.height/2 + 800*Math.sin(angles[j]))
-                ], 
-                textHeight
-            ));
-            j++;
-            while (j >= angles.length) {
-                j -= angles.length;
-            }
-
-            // Move PlaceName towards center
-            placeNames[placeNames.length - 1].gravitate(placeNames);
-        }
-        // Draw PlaceName
-        placeNames[placeNames.length - 1].render();
-    }
 }

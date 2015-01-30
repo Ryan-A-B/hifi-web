@@ -1,6 +1,6 @@
 // Profanity list from the following source 23/01/2015
 // https://github.com/shutterstock/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/blob/master/en
-var profanity = [
+names.profanity = [
     /2g1c/i, /2 girls 1 cup/i, /acrotomophilia/i, /alabama hot pocket/i, /alaskan pipeline/i, 
     /anal/i, /anilingus/i, /anus/i, /arsehole/i, /ass/i, /asshole/i, /assmunch/i, /auto erotic/i, 
     /autoerotic/i, /babeland/i, /baby batter/i, /baby juice/i, /ball gag/i, /ball gravy/i, 
@@ -63,9 +63,9 @@ var profanity = [
 
 // Compares word to list of profanity regular expressions
 // Returns true if profanity found otherwise false
-function hasProfanity (word) {
-    for (var i = 0; i < profanity.length; i++) {
-        if (word.search(profanity[i]) != -1) {
+names.hasProfanity = function (word) {
+    for (var i = 0; i < names.profanity.length; i++) {
+        if (word.search(names.profanity[i]) != -1) {
             return true;
         }
     }
